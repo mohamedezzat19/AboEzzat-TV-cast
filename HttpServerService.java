@@ -4,10 +4,12 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import androidx.core.app.NotificationCompat;
 
 import java.io.BufferedReader;
@@ -16,26 +18,39 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class HttpServerService extends Service {
 
     private ServerSocket serverSocket;
     private boolean isRunning = false;
+    private PowerManager.WakeLock wakeLock;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        
+        // منع النظام من قتل الخدمة أو تنويمها
+        try {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null) {
+                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AboEzzat::CastLock");
+                wakeLock.acquire();
+            }
+        } catch (Exception ignored) {}
+
         startForegroundServiceNotification();
         startServer();
     }
 
     private void startForegroundServiceNotification() {
-        String channelId = "cast_service_channel";
+        String channelId = "cast_service_permanent";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     channelId,
                     "AboEzzat Cast Service",
-                    NotificationManager.IMPORTANCE_LOW
+                    NotificationManager.IMPORTANCE_HIGH
             );
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
@@ -44,18 +59,24 @@ public class HttpServerService extends Service {
         }
 
         Notification notification = new NotificationCompat.Builder(this, channelId)
-                .setContentTitle("AboEzzat Receiver شغال")
-                .setContentText("في انتظار استقبال الروابط...")
+                .setContentTitle("AboEzzat Receiver")
+                .setContentText("الخادم يعمل دائماً وجاهز لاستقبال الروابط")
                 .setSmallIcon(android.R.drawable.ic_media_play)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setOngoing(true)
                 .build();
 
         startForeground(1, notification);
     }
 
     private void startServer() {
+        if (isRunning) return;
         isRunning = true;
         new Thread(() -> {
             try {
+                if (serverSocket != null && !serverSocket.isClosed()) {
+                    serverSocket.close();
+                }
                 serverSocket = new ServerSocket(8080);
                 while (isRunning) {
                     Socket socket = serverSocket.accept();
@@ -88,9 +109,9 @@ public class HttpServerService extends Service {
                     }
                 }
 
-                String receivedUrl = body.toString().trim();
+                String receivedText = body.toString().trim();
 
-                // إرسال رد HTTP 200 OK للموبايل حتى لا يظهر خطأ
+                // الرد فوراً على الموبايل لتأكيد الاستلام
                 OutputStream out = socket.getOutputStream();
                 String httpResponse = "HTTP/1.1 200 OK\r\n" +
                         "Content-Type: text/plain; charset=UTF-8\r\n" +
@@ -101,10 +122,11 @@ public class HttpServerService extends Service {
                 out.flush();
                 socket.close();
 
-                // فتح الرابط على الفاير ستيك فوراً
-                if (!receivedUrl.isEmpty() && (receivedUrl.startsWith("http://") || receivedUrl.startsWith("https://"))) {
-                    Intent launchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(receivedUrl));
-                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                // استخراج الرابط وفتحه فوق أي تطبيق شغال حالياً
+                String extractedUrl = extractUrl(receivedText);
+                if (extractedUrl != null && !extractedUrl.isEmpty()) {
+                    Intent launchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(extractedUrl));
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     startActivity(launchIntent);
                 }
             } catch (Exception ignored) {
@@ -115,15 +137,28 @@ public class HttpServerService extends Service {
         }).start();
     }
 
+    private String extractUrl(String text) {
+        Pattern pattern = Pattern.compile("https?://\\S+");
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return null;
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
+        startServer();
+        return START_STICKY; // يطلب من النظام إعادة تشغيل الخدمة فوراً إذا ماتت
     }
 
     @Override
     public void onDestroy() {
         isRunning = false;
         try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+            }
             if (serverSocket != null) serverSocket.close();
         } catch (Exception ignored) {}
         super.onDestroy();
