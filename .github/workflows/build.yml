@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repository
+    - name: Checkout Code
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
@@ -18,41 +18,73 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Build Android APK
+    - name: Organize Structure & Build
       run: |
         mkdir -p app/src/main/java/com/aboezzat/castreceiver
-        if [ -f MainActivity.java ]; then mv MainActivity.java app/src/main/java/com/aboezzat/castreceiver/; fi
-        if [ -f HttpServerService.java ]; then mv HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/; fi
-        if [ -f AndroidManifest.xml ]; then mv AndroidManifest.xml app/src/main/; fi
-        if [ -f build.gradle ]; then mv build.gradle app/; fi
+        [ -f MainActivity.java ] && cp MainActivity.java app/src/main/java/com/aboezzat/castreceiver/
+        [ -f HttpServerService.java ] && cp HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/
+        [ -f AndroidManifest.xml ] && cp AndroidManifest.xml app/src/main/
         
-        cat << 'EOF' > settings.gradle
-        pluginManagement {
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-            }
-        }
-        dependencyResolutionManagement {
-            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-            repositories {
-                google()
-                mavenCentral()
-            }
-        }
-        rootProject.name = "AboEzzat-TV-cast"
-        include ':app'
-        EOF
+        # إنشاء ملف settings.gradle
+        printf "rootProject.name = 'AboEzzat-TV-cast'\ninclude ':app'\n" > settings.gradle
 
+        # إنشاء build.gradle للمشروع الأساسي
         cat << 'EOF' > build.gradle
-        plugins {
-            id 'com.android.application' version '8.2.2' apply false
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.1.4'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
         }
         EOF
 
-        gradle wrapper --gradle-version 8.2
-        ./gradlew assembleDebug --stacktrace
+        # نقل أو تهيئة build.gradle الخاص بالتطبيق
+        if [ -f build.gradle.app ]; then
+            cp build.gradle.app app/build.gradle
+        else
+            cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+        android {
+            namespace 'com.aboezzat.castreceiver'
+            compileSdk 34
+            defaultConfig {
+                applicationId "com.aboezzat.castreceiver"
+                minSdk 21
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+            buildTypes {
+                release {
+                    minifyEnabled false
+                }
+            }
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+        }
+        EOF
+        fi
+
+        # إنشاء الـ Wrapper وتشغيل التجميع
+        gradle wrapper --gradle-version 8.1.1
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
