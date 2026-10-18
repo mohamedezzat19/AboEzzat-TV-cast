@@ -25,30 +25,28 @@ jobs:
       run: |
         rm -f build.gradle settings.gradle gradle.properties
 
-        # إنشاء المجلدات وترتيب الملفات
+        # مجلدات الكود والملفات
         mkdir -p app/src/main/java/com/aboezzat/castreceiver
         [ -f MainActivity.java ] && cp MainActivity.java app/src/main/java/com/aboezzat/castreceiver/
         [ -f HttpServerService.java ] && cp HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/
+        [ -f BootReceiver.java ] && cp BootReceiver.java app/src/main/java/com/aboezzat/castreceiver/
         [ -f AndroidManifest.xml ] && cp AndroidManifest.xml app/src/main/
 
-        # إنشاء الأيقونات الافتراضية
-        mkdir -p app/src/main/res/mipmap-anydpi-v26
-        cat << 'EOF' > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-        <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-            <background android:drawable="@android:color/holo_blue_dark"/>
-            <foreground android:drawable="@android:color/white"/>
-        </adaptive-icon>
-        EOF
-        cp app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+        # وضع صورتك كأيقونة في كل المقاسات
+        for dir in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+          mkdir -p app/src/main/res/$dir
+          if [ -f ic_launcher.png ]; then
+            cp ic_launcher.png app/src/main/res/$dir/ic_launcher.png
+          fi
+        done
 
-        # إنشاء gradle.properties
+        # إعدادات Gradle
         cat << 'EOF' > gradle.properties
         android.useAndroidX=true
         android.nonTransitiveRClass=true
         org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
         EOF
 
-        # إنشاء settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -68,14 +66,12 @@ jobs:
         include ':app'
         EOF
 
-        # إنشاء build.gradle الرئيسي
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.2' apply false
         }
         EOF
 
-        # إنشاء app/build.gradle مع تصحيح علامات التنصيص
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
