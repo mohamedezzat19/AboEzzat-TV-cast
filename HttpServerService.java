@@ -3,6 +3,7 @@ package com.aboezzat.castreceiver;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -30,8 +31,7 @@ public class HttpServerService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        
-        // منع النظام من قتل الخدمة أو تنويمها
+
         try {
             PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (powerManager != null) {
@@ -111,7 +111,7 @@ public class HttpServerService extends Service {
 
                 String receivedText = body.toString().trim();
 
-                // الرد فوراً على الموبايل لتأكيد الاستلام
+                // الرد فوراً لتأكيد الاستلام مع الموبايل
                 OutputStream out = socket.getOutputStream();
                 String httpResponse = "HTTP/1.1 200 OK\r\n" +
                         "Content-Type: text/plain; charset=UTF-8\r\n" +
@@ -122,12 +122,28 @@ public class HttpServerService extends Service {
                 out.flush();
                 socket.close();
 
-                // استخراج الرابط وفتحه فوق أي تطبيق شغال حالياً
+                // استخراج الرابط
                 String extractedUrl = extractUrl(receivedText);
                 if (extractedUrl != null && !extractedUrl.isEmpty()) {
                     Intent launchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(extractedUrl));
-                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                    startActivity(launchIntent);
+                    
+                    // أعلام إجبار النظام على فتح الشاشة فوراً في الواجهة ومنع حجبها
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+                    // استخدام PendingIntent لتخطي قيود الخلفية في Fire OS
+                    try {
+                        PendingIntent pendingIntent = PendingIntent.getActivity(
+                                getApplicationContext(),
+                                0,
+                                launchIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+                        );
+                        pendingIntent.send();
+                    } catch (Exception e) {
+                        startActivity(launchIntent);
+                    }
                 }
             } catch (Exception ignored) {
                 try {
@@ -149,7 +165,7 @@ public class HttpServerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         startServer();
-        return START_STICKY; // يطلب من النظام إعادة تشغيل الخدمة فوراً إذا ماتت
+        return START_STICKY;
     }
 
     @Override
