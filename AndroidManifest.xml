@@ -1,24 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.aboezzat.castreceiver">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- صلاحيات الاتصال بالشبكة والعمل في الخلفية -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <!-- تعريف التطبيق كبرنامج للتلفزيون والفاير ستيك -->
-    <uses-feature android:name="android.software.leanback" android:required="false" />
-    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="AboEzzat TV Cast"
+        android:label="AboEzzat Receiver"
+        android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
-        <!-- الشاشة الرئيسية -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -29,11 +22,19 @@
             </intent-filter>
         </activity>
 
-        <!-- خدمة السيرفر التي تعمل في الخلفية -->
         <service
             android:name=".HttpServerService"
             android:enabled="true"
             android:exported="false" />
+
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>
