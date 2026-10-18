@@ -9,23 +9,53 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
         distribution: 'temurin'
+        java-version: '17'
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Build APK
+    - name: Build Android APK
       run: |
-        gradle build || true
+        mkdir -p app/src/main/java/com/aboezzat/castreceiver
+        if [ -f MainActivity.java ]; then mv MainActivity.java app/src/main/java/com/aboezzat/castreceiver/; fi
+        if [ -f HttpServerService.java ]; then mv HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/; fi
+        if [ -f AndroidManifest.xml ]; then mv AndroidManifest.xml app/src/main/; fi
+        if [ -f build.gradle ]; then mv build.gradle app/; fi
+        
+        cat << 'EOF' > settings.gradle
+        include ':app'
+        EOF
 
-    - name: Upload APK
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.2.2'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
+
+        gradle wrapper --gradle-version 8.2
+        ./gradlew assembleDebug --stacktrace
+
+    - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: AboEzzat-TV-Receiver
-        path: app/build/outputs/apk/
+        path: app/build/outputs/apk/debug/*.apk
