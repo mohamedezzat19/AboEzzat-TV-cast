@@ -25,13 +25,13 @@ jobs:
       run: |
         rm -f build.gradle settings.gradle gradle.properties
 
-        # تجهيز مسار كود الجافا والمانيفست
+        # إنشاء المجلدات وترتيب الملفات
         mkdir -p app/src/main/java/com/aboezzat/castreceiver
         [ -f MainActivity.java ] && cp MainActivity.java app/src/main/java/com/aboezzat/castreceiver/
         [ -f HttpServerService.java ] && cp HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/
         [ -f AndroidManifest.xml ] && cp AndroidManifest.xml app/src/main/
 
-        # إنشاء أيقونة وموارد افتراضية لمنع توقف البناء
+        # إنشاء الأيقونات الافتراضية
         mkdir -p app/src/main/res/mipmap-anydpi-v26
         cat << 'EOF' > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
         <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
@@ -41,7 +41,7 @@ jobs:
         EOF
         cp app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
 
-        # إنشاء gradle.properties لتفعيل AndroidX
+        # إنشاء gradle.properties
         cat << 'EOF' > gradle.properties
         android.useAndroidX=true
         android.nonTransitiveRClass=true
@@ -75,14 +75,14 @@ jobs:
         }
         EOF
 
-        # إنشاء app/build.gradle
+        # إنشاء app/build.gradle مع تصحيح علامات التنصيص
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
         }
 
         android {
-            namespace 'com.aboezzat.castreceiver"
+            namespace "com.aboezzat.castreceiver"
             compileSdk 34
 
             defaultConfig {
