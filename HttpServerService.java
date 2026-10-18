@@ -3,7 +3,6 @@ package com.aboezzat.castreceiver;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -60,7 +59,7 @@ public class HttpServerService extends Service {
 
         Notification notification = new NotificationCompat.Builder(this, channelId)
                 .setContentTitle("AboEzzat Receiver")
-                .setContentText("الخادم يعمل دائماً وجاهز لاستقبال الروابط")
+                .setContentText("الخادم يعمل في الخلفية")
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .setOngoing(true)
                 .build();
@@ -81,8 +80,7 @@ public class HttpServerService extends Service {
                     Socket socket = serverSocket.accept();
                     handleClient(socket);
                 }
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }).start();
     }
 
@@ -122,7 +120,11 @@ public class HttpServerService extends Service {
 
                 String extractedUrl = extractUrl(receivedText);
                 if (extractedUrl != null && !extractedUrl.isEmpty()) {
-                    openUrlForcefully(extractedUrl);
+                    // فتح MainActivity مع تمرير الرابط لتتولى عرضه فوراً على الشاشة
+                    Intent intent = new Intent(this, MainActivity.class);
+                    intent.setData(Uri.parse(extractedUrl));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    startActivity(intent);
                 }
             } catch (Exception ignored) {
                 try {
@@ -130,49 +132,6 @@ public class HttpServerService extends Service {
                 } catch (Exception ignored2) {}
             }
         }).start();
-    }
-
-    private void openUrlForcefully(String url) {
-        Intent launchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-        PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
-                this,
-                (int) System.currentTimeMillis(),
-                launchIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
-        );
-
-        String alertChannelId = "cast_launch_alert";
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager != null) {
-            NotificationChannel alertChannel = new NotificationChannel(
-                    alertChannelId,
-                    "Cast Launcher",
-                    NotificationManager.IMPORTANCE_HIGH
-            );
-            alertChannel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-            manager.createNotificationChannel(alertChannel);
-        }
-
-        Notification alertNotification = new NotificationCompat.Builder(this, alertChannelId)
-                .setSmallIcon(android.R.drawable.ic_media_play)
-                .setContentTitle("تشغيل الفيديو")
-                .setContentText("جاري عرض الرابط...")
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setFullScreenIntent(fullScreenPendingIntent, true)
-                .setAutoCancel(true)
-                .build();
-
-        if (manager != null) {
-            manager.notify(2, alertNotification);
-        }
-
-        // محاولة تشغيل إضافية لضمان الاستجابة السريعة
-        try {
-            startActivity(launchIntent);
-        } catch (Exception ignored) {}
     }
 
     private String extractUrl(String text) {
