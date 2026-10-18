@@ -20,12 +20,19 @@ jobs:
 
     - name: Organize Structure & Build
       run: |
-        mkdir -p app/src/main/java/com/aboezzat/castreceiver
-        [ -f MainActivity.java ] && cp MainActivity.java app/src/main/java/com/aboezzat/castreceiver/
-        [ -f HttpServerService.java ] && cp HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/
-        [ -f AndroidManifest.xml ] && cp AndroidManifest.xml app/src/main/
+        # تنظيف أي ملفات gradle قديمة في المجلد الرئيسي لتجنب التضارب
+        rm -f build.gradle settings.gradle
 
-        # 1. إعداد settings.gradle
+        # إنشاء المجلدات الصحيحة لكود الجافا
+        mkdir -p app/src/main/java/com/aboezzat/castreceiver
+        [ -f MainActivity.java ] && mv MainActivity.java app/src/main/java/com/aboezzat/castreceiver/
+        [ -f HttpServerService.java ] && mv HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/
+        [ -f AndroidManifest.xml ] && mv AndroidManifest.xml app/src/main/
+
+        # قبول تراخيص أندرويد في بيئة السيرفر
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+        # إنشاء ملف settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -45,14 +52,14 @@ jobs:
         include ':app'
         EOF
 
-        # 2. إعداد build.gradle الرئيسي
+        # إنشاء ملف build.gradle الرئيسي
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.2' apply false
         }
         EOF
 
-        # 3. إعداد app/build.gradle
+        # إنشاء ملف app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -86,13 +93,15 @@ jobs:
         }
         EOF
 
-        # 4. تنزيل gradle wrapper بالإصدار المتوافق 8.2 وتثبيته
-        wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
-        unzip -q gradle-8.2-bin.zip
-        ./gradle-8.2/bin/gradle wrapper --gradle-version 8.2
+        # تنزيل واستخدام Gradle 8.2
+        if [ ! -d "gradle-8.2" ]; then
+            wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
+            unzip -q gradle-8.2-bin.zip
+        fi
 
+        ./gradle-8.2/bin/gradle wrapper --gradle-version 8.2
         chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon --stacktrace
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
