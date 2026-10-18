@@ -3,6 +3,7 @@ package com.aboezzat.castreceiver;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -59,7 +60,7 @@ public class HttpServerService extends Service {
 
         Notification notification = new NotificationCompat.Builder(this, channelId)
                 .setContentTitle("AboEzzat Receiver")
-                .setContentText("الخادم يعمل في الخلفية")
+                .setContentText("الخادم يعمل دائماً وجاهز لاستقبال الروابط")
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .setOngoing(true)
                 .build();
@@ -120,11 +121,20 @@ public class HttpServerService extends Service {
 
                 String extractedUrl = extractUrl(receivedText);
                 if (extractedUrl != null && !extractedUrl.isEmpty()) {
-                    // فتح MainActivity مع تمرير الرابط لتتولى عرضه فوراً على الشاشة
-                    Intent intent = new Intent(this, MainActivity.class);
-                    intent.setData(Uri.parse(extractedUrl));
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                    startActivity(intent);
+                    Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(extractedUrl));
+                    viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+                    try {
+                        PendingIntent pi = PendingIntent.getActivity(
+                                getApplicationContext(),
+                                (int) System.currentTimeMillis(),
+                                viewIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+                        );
+                        pi.send();
+                    } catch (Exception e) {
+                        getApplicationContext().startActivity(viewIntent);
+                    }
                 }
             } catch (Exception ignored) {
                 try {
