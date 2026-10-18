@@ -23,7 +23,6 @@ jobs:
 
     - name: Organize Structure & Build
       run: |
-        # تنظيف أي ملفات سابقة لتجنب أي تعارض
         rm -f build.gradle settings.gradle gradle.properties
 
         # تجهيز مسار كود الجافا والمانيفست
@@ -31,6 +30,16 @@ jobs:
         [ -f MainActivity.java ] && cp MainActivity.java app/src/main/java/com/aboezzat/castreceiver/
         [ -f HttpServerService.java ] && cp HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/
         [ -f AndroidManifest.xml ] && cp AndroidManifest.xml app/src/main/
+
+        # إنشاء أيقونة وموارد افتراضية لمنع توقف البناء
+        mkdir -p app/src/main/res/mipmap-anydpi-v26
+        cat << 'EOF' > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+        <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+            <background android:drawable="@android:color/holo_blue_dark"/>
+            <foreground android:drawable="@android:color/white"/>
+        </adaptive-icon>
+        EOF
+        cp app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
 
         # إنشاء gradle.properties لتفعيل AndroidX
         cat << 'EOF' > gradle.properties
@@ -73,7 +82,7 @@ jobs:
         }
 
         android {
-            namespace 'com.aboezzat.castreceiver'
+            namespace 'com.aboezzat.castreceiver"
             compileSdk 34
 
             defaultConfig {
@@ -100,7 +109,6 @@ jobs:
         }
         EOF
 
-        # استخدام أداة Gradle الجاهزة في السيرفر لإنشاء الـ Wrapper وتشغيله
         gradle wrapper --gradle-version 8.2
         chmod +x gradlew
         ./gradlew assembleDebug --no-daemon
