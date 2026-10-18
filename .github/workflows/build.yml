@@ -18,21 +18,28 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
     - name: Organize Structure & Build
       run: |
-        # تنظيف أي ملفات gradle قديمة في المجلد الرئيسي لتجنب التضارب
-        rm -f build.gradle settings.gradle
+        # تنظيف أي ملفات سابقة لتجنب أي تعارض
+        rm -f build.gradle settings.gradle gradle.properties
 
-        # إنشاء المجلدات الصحيحة لكود الجافا
+        # تجهيز مسار كود الجافا والمانيفست
         mkdir -p app/src/main/java/com/aboezzat/castreceiver
-        [ -f MainActivity.java ] && mv MainActivity.java app/src/main/java/com/aboezzat/castreceiver/
-        [ -f HttpServerService.java ] && mv HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/
-        [ -f AndroidManifest.xml ] && mv AndroidManifest.xml app/src/main/
+        [ -f MainActivity.java ] && cp MainActivity.java app/src/main/java/com/aboezzat/castreceiver/
+        [ -f HttpServerService.java ] && cp HttpServerService.java app/src/main/java/com/aboezzat/castreceiver/
+        [ -f AndroidManifest.xml ] && cp AndroidManifest.xml app/src/main/
 
-        # قبول تراخيص أندرويد في بيئة السيرفر
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        # إنشاء gradle.properties لتفعيل AndroidX
+        cat << 'EOF' > gradle.properties
+        android.useAndroidX=true
+        android.nonTransitiveRClass=true
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        EOF
 
-        # إنشاء ملف settings.gradle
+        # إنشاء settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories {
@@ -52,14 +59,14 @@ jobs:
         include ':app'
         EOF
 
-        # إنشاء ملف build.gradle الرئيسي
+        # إنشاء build.gradle الرئيسي
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.2' apply false
         }
         EOF
 
-        # إنشاء ملف app/build.gradle
+        # إنشاء app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -93,13 +100,8 @@ jobs:
         }
         EOF
 
-        # تنزيل واستخدام Gradle 8.2
-        if [ ! -d "gradle-8.2" ]; then
-            wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
-            unzip -q gradle-8.2-bin.zip
-        fi
-
-        ./gradle-8.2/bin/gradle wrapper --gradle-version 8.2
+        # استخدام أداة Gradle الجاهزة في السيرفر لإنشاء الـ Wrapper وتشغيله
+        gradle wrapper --gradle-version 8.2
         chmod +x gradlew
         ./gradlew assembleDebug --no-daemon
 
