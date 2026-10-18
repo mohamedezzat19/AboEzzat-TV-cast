@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -27,30 +28,28 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // الحاوية الأساسية بتنسيق عمودي كامل
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setGravity(Gravity.CENTER_HORIZONTAL);
         rootLayout.setPadding(40, 30, 40, 30);
 
-        // خلفية أنيقة متدرجة داكنة
         GradientDrawable bg = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0xFF0F2027, 0xFF203A43, 0xFF2C5364}
         );
         rootLayout.setBackground(bg);
 
-        // 1. أعلى الشاشة في المنتصف: أهلاً بك يا أبو عزت
+        // 1. أعلى الشاشة في المنتصف
         TextView tvWelcome = new TextView(this);
         tvWelcome.setText("أهلاً بك يا أبو عزت");
         tvWelcome.setTextSize(36);
-        tvWelcome.setTextColor(0xFF00E676); // أخضر زمردي جميل
+        tvWelcome.setTextColor(0xFF00E676);
         tvWelcome.setTypeface(null, Typeface.BOLD);
         tvWelcome.setGravity(Gravity.CENTER);
         tvWelcome.setPadding(0, 10, 0, 20);
         rootLayout.addView(tvWelcome);
 
-        // بطاقة لعرض معلومات الآي بي والمنفذ
+        // بطاقة الآي بي والمنفذ
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER);
@@ -105,18 +104,18 @@ public class MainActivity extends Activity {
         });
         rootLayout.addView(btnRestart);
 
-        // مساحة فارغة لإنزال الذكر لأسفل الشاشة
+        // مسافة لدفع الذكر لأسفل الشاشة
         View spacer = new View(this);
         LinearLayout.LayoutParams spacerParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
         spacer.setLayoutParams(spacerParams);
         rootLayout.addView(spacer);
 
-        // 2. أسفل الشاشة بخط ضخم وعريض جداً ملء العرض
+        // 2. أسفل الشاشة
         TextView tvZikr = new TextView(this);
         tvZikr.setText("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ ، سُبْحَانَ اللَّهِ الْعَظِيمِ");
-        tvZikr.setTextSize(38); // حجم كبير جداً وواضح لشاشة التلفزيون
-        tvZikr.setTextColor(0xFFFFD54F); // لون ذهبي براق
+        tvZikr.setTextSize(38);
+        tvZikr.setTextColor(0xFFFFD54F);
         tvZikr.setTypeface(null, Typeface.BOLD);
         tvZikr.setGravity(Gravity.CENTER);
         tvZikr.setPadding(0, 10, 0, 20);
@@ -130,8 +129,26 @@ public class MainActivity extends Activity {
 
         setContentView(rootLayout);
 
-        // تشغيل الخدمة
         startBackgroundService();
+        handleIncomingIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingIntent(intent);
+    }
+
+    private void handleIncomingIntent(Intent intent) {
+        if (intent != null && intent.getData() != null) {
+            Uri videoUri = intent.getData();
+            try {
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, videoUri);
+                browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(browserIntent);
+            } catch (Exception ignored) {}
+        }
     }
 
     private void startBackgroundService() {
